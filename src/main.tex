@@ -1,0 +1,38 @@
+% Preamble
+% !TEX program = xelatex
+\include{preambule}
+\include{variables}
+
+% Document
+\begin{document}
+    \include{0-todo-title}
+    \include{0-todo}
+    \setcounter{page}{1}
+    \include{00-title}
+
+    \normalsize
+    \pagebreak
+
+    \include{01-report}
+
+    \renewcommand{\contentsname}{\normalsize\bfseries\centering СОДЕРЖАНИЕ}
+    \small
+    \tableofcontents
+    \normalsize
+
+    \pagebreak
+
+    \include{20-analytic}
+    \input{30-constructing}
+    \input{40-compilation}
+    \input{80-conclusion.tex}
+
+    \section*{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}
+    \addcontentsline{toc}{section}{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}
+    \bibliography{main}
+    \pagebreak
+
+    \include{90-lexer-app}
+    \include{91-parser-app}
+
+\end{document}
