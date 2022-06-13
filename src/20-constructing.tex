@@ -9,9 +9,9 @@
 \end{itemize}
 
 \subsection{Генерация лексического и синтаксического анализатора}\label{subsec:lex_synt_gen}
-В качестве входных данных для ANTLR выступает файл с описанием грамматики исходного языка.
-Данный файл содержит только правила грамматики без добавления кода, исполнение которого соответствует
-применению определённых правил.
+Для создания анализатора в работе используется ANTLR4~\cite{antlr}.
+В качестве входных данных для него выступает файл с описанием грамматики исходного языка.
+Данный файл содержит только правила грамматики без добавления кода, исполнение которого соответствует применению определённых правил.
 Подобное разделение позволяет использовать один и тот же файл грамматики для построения различных приложений
 (например, компиляторов, генерирующих код для различных сред исполнения).
 
@@ -31,31 +31,55 @@
 Данные ошибки возможно перехватить стандартным обработчиком ошибок языка на котором ведется разработка компилятора.
 
 \subsection{Генерация кода}\label{subsec:codegen}
-Компилятор генерирует файл типа LLVM IR (Low Level Virtual Machine Intermediate representation),
-являющийся промежуточным представлением генерируемого кода для виртуальной машины LLVM.
+Помимо парсера ANTLR также генерирует класс, реализующий обход полученного дерева, для каждого типа узлов дерева
+в классе присутсвует метод его обработки, называние метода начинается со слова "visit". В листинге~\ref{lst:visit_var_spec}
+представлен пример метода обработки узла операции объявления функции.
+В методе происходит генерация инструкции выделения памяти, а также создание записи в таблице переменных текущей области видимости.
+Кроме того производится попытка привидения типа значения к типу переменной, в случае, если помимо объявления переменной
+происходит также присвоение ей значения.
 
-Данный файл содержит инструкции описывающие ход выполнения программы на языке более высокого уровня, чем Ассемблер.
-Такой подход позволяет описывать код программы более естественным образом.
-LLVM IR позволяет зарегистрировать следующие типы данных:
-\begin{itemize}
-    \item целые числа произвольной разрядности;
-    \item числа с плавающей точкой: float, double, а также ряд типов,
-    специфичных для конкретной платформы (например, x86\_fp80);
-    \item указатели;
-    \item массивы;
-    \item структуры;
-    \item векторы;
-    \item функции.
-\end{itemize}
+\begin{lstlisting}[language=Python,caption={Метод обработки объявления/определения переменной},label={lst:visit_var_spec}]
+def visitVarSpec(self, ctx: GoParser.VarSpecContext):
+    variable_name = ctx.identifierList().getText()
+    variable_type = self.visitType_(ctx.type_())
+    variable = self.current_builder.alloca(variable_type, name=variable_name)
+    self.variables_scopes[self.current_scope_name][variable_name] = variable
+    if ctx.expressionList():
+        value = self.visitExpressionList(ctx.expressionList())
+        value = self.maybe_convert_type(value, variable.type.pointee)
+        self.current_builder.store(value, variable)
+    return variable
+\end{lstlisting}
 
-Большинство инструкций в LLVM принимают два аргумента(операнда) и возвращают одно значение(трёхадресный код).
-Значения определяются текстовым идентификатором.
-Локальные значения обозначаются префиксом \%, а глобальные — @.
-Локальные значения также называют регистрами, а LLVM — виртуальной машиной с бесконечным числом регистров.
+Отедльного внимания заслуживают вспомогательные методы согласования типов. Так как LLVMIR требует строго соответсвия
+типов аргументов и операции, зачастую необходимо перед выполнением инструкции операции выполнить приведение типов,
+загрузку значения из памяти. Для этих целей служат вспомогательные функции, одна из которых приведена в листинге~\ref{lst:maybe_convert_type}
 
-Тип операндов всегда указывается явно, и однозначно определяет тип результата.
-Операнды арифметических инструкций должны иметь одинаковый тип, но сами инструкции «перегружены» для любых числовых типов и векторов.
+\begin{lstlisting}[language=Python,caption={Вспомогательный метод согласования типов},label={lst:helpers}]
+def maybe_convert_type(self, value, target_type):
+    if isinstance(value, ir.Constant):
+        value.type = target_type
+        return value
+    if isinstance(value, ir.AllocaInstr):
+        value = self.current_builder.load(value, name=value.name)
+    if value.type == target_type:
+        return value
+    if target_type.intrinsic_name == 'f64':
+        value = self.current_builder.sitofp(value, ir.DoubleType())
+        return value
+    if target_type.intrinsic_name == 'i1':
+        value = self.current_builder.icmp_signed('>', value, value.type(0))
+        return value
+    if target_type.intrinsic_name in CONVERTABLE_INT_EXT[value.type.intrinsic_name]:
+        value = self.current_builder.sext(value, target_type)
+        return value
+    if target_type.intrinsic_name in CONVERTABLE_INT_TRUNC[value.type.intrinsic_name]:
+        value = self.current_builder.trunc(value, target_type)
+        return value
+    raise Exception('Filed to convert type to target')
+\end{lstlisting}
 
-Код модуля кодогенерации представлен на GitHub
-
-\texttt{https://github.com/LuckySting/pygoco}.
+Так как методы разбора узлов вызывают соответствующие методы разбора дочерних узлов, то обработка всего дерева
+заключается в разборе корневого элемента вызовом метода "visitSourceFile".
+Когда все узлы дерева обработаны, полученаня последовательность инструкций на языке LLVM IR верифицируется и записывается
+в файл.
