@@ -1,0 +1,87 @@
+\section{Конструкторский раздел}\label{sec:construct}
+
+\subsection{Структура компилятора}\label{subsec:structure}
+Компилятор состоит из 3-ех модулей:
+\begin{itemize}
+    \item лексический анализатор, преобразовывающий текст программы в поток токенов;
+    \item синтаксический анализатор, строящий AST-дерево;
+    \item генератор LLRM IR кода.
+\end{itemize}
+
+\subsection{Генерация лексического и синтаксического анализатора}\label{subsec:lex_synt_gen}
+Для создания анализатора в работе используется ANTLR4~\cite{antlr}.
+В качестве входных данных для него выступает файл с описанием грамматики исходного языка.
+Данный файл содержит только правила грамматики без добавления кода, исполнение которого соответствует применению определённых правил.
+Подобное разделение позволяет использовать один и тот же файл грамматики для построения различных приложений
+(например, компиляторов, генерирующих код для различных сред исполнения).
+
+На основе правил заданной грамматики языка ANTLR генерирует класс нисходящего рекурсивного синтаксического анализатора.
+Для каждого правила грамматики в полученном классе имеется свой рекурсивный метод.
+Разбор входной последовательности начинается с корня синтаксического дерева и заканчивается в листьях.
+
+Сгенерированный ANTLR синтаксический анализатор выдаёт абстрактное синтаксическое дерево в чистом виде, и реализует методы для
+его построения и последующего обхода.
+Дерево разбора для заданной входной последовательности символов можно получить, вызвав метод, соответствующий аксиоме
+в исходной грамматике языка.
+В грамматике языка Golang аксиомой является нетерминал sourceFile, поэтому построение дерева следует начинать с вызова
+метода sourceFile() объекта класса синтаксического анализатора, являющегося корнем дерева.
+
+\subsection{Обнаружение и обработка лексических и синтаксических ошибок}\label{subsec:errors}
+Все ошибки, которые обнаруживаются лексическим и синтаксическим анализаторами ANTLR, по умолчанию выводятся в стандартный поток вывода ошибок.
+Данные ошибки возможно перехватить стандартным обработчиком ошибок языка на котором ведется разработка компилятора.
+
+\subsection{Генерация кода}\label{subsec:codegen}
+Помимо парсера ANTLR также генерирует класс, реализующий обход полученного дерева, для каждого типа узлов дерева
+в классе присутсвует метод его обработки, называние метода начинается со слова "visit". В листинге~\ref{lst:visit_var_spec}
+представлен пример метода обработки узла операции объявления функции.
+В методе происходит генерация инструкции выделения памяти, а также создание записи в таблице переменных текущей области видимости.
+Кроме того производится попытка привидения типа значения к типу переменной, в случае, если помимо объявления переменной
+происходит также присвоение ей значения.
+
+\begin{lstlisting}[language=Python,caption={Метод обработки объявления/определения переменной},label={lst:visit_var_spec}]
+def visitVarSpec(self, ctx: GoParser.VarSpecContext):
+    variable_name = ctx.identifierList().getText()
+    variable_type = self.visitType_(ctx.type_())
+    variable = self.current_builder.alloca(variable_type, name=variable_name)
+    self.variables_scopes[self.current_scope_name][variable_name] = variable
+    if ctx.expressionList():
+        value = self.visitExpressionList(ctx.expressionList())
+        value = self.maybe_convert_type(value, variable.type.pointee)
+        self.current_builder.store(value, variable)
+    return variable
+\end{lstlisting}
+
+Отедльного внимания заслуживают вспомогательные методы согласования типов. Так как LLVMIR требует строго соответсвия
+типов аргументов и операции, зачастую необходимо перед выполнением инструкции операции выполнить приведение типов,
+загрузку значения из памяти. Для этих целей служат вспомогательные функции, одна из которых приведена в листинге~\ref{lst:maybe_convert_type}
+
+\begin{lstlisting}[language=Python,caption={Вспомогательный метод согласования типов},label={lst:helpers}]
+def maybe_convert_type(self, value, target_type):
+    if isinstance(value, ir.Constant):
+        value.type = target_type
+        return value
+    if isinstance(value, ir.AllocaInstr):
+        value = self.current_builder.load(value, name=value.name)
+    if value.type == target_type:
+        return value
+    if target_type.intrinsic_name == 'f64':
+        value = self.current_builder.sitofp(value, ir.DoubleType())
+        return value
+    if target_type.intrinsic_name == 'i1':
+        value = self.current_builder.icmp_signed('>', value, value.type(0))
+        return value
+    if target_type.intrinsic_name in CONVERTABLE_INT_EXT[value.type.intrinsic_name]:
+        value = self.current_builder.sext(value, target_type)
+        return value
+    if target_type.intrinsic_name in CONVERTABLE_INT_TRUNC[value.type.intrinsic_name]:
+        value = self.current_builder.trunc(value, target_type)
+        return value
+    raise Exception('Filed to convert type to target')
+\end{lstlisting}
+
+Так как методы разбора узлов вызывают соответствующие методы разбора дочерних узлов, то обработка всего дерева
+заключается в разборе корневого элемента вызовом метода "visitSourceFile".
+Когда все узлы дерева обработаны, полученаня последовательность инструкций на языке LLVM IR верифицируется и записывается
+в файл.
+
+Программный код класса для кодогенерации представлен в приложении Б.

@@ -7,7 +7,7 @@
 \usepackage[russian]{babel}
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
-%\usepackage{times}
+%\usepackage{times}ot
 %
 % ГОСТовские настройки для полей и абзацев
 \usepackage{float}
@@ -57,7 +57,22 @@
 % Цвета для гиперссылок и листингов
 \usepackage{color}
 
-% Гиперссылки \toc с кликабельностью
+% Настройки оглавления
+\usepackage{tocloft}
+\setlength{\cftpartindent}{0em}
+\setlength{\cftchapindent}{0em}
+\setlength{\cftsecindent}{0em}
+\setlength{\cftsubsecindent}{0em}
+\setlength{\cftsubsubsecindent}{0em}
+\setlength{\cftbeforesecskip}{0}
+\renewcommand{\cftsecleader}{\cftdotfill{\cftXdotsep}}
+\renewcommand{\cftdotsep}{0}
+\renewcommand{\cftsecfont}{\normalfont}
+\renewcommand{\cftsecpagefont}{\normalfont}
+\renewcommand{\cftsecaftersnum}{.}
+\renewcommand{\cftsubsecaftersnum}{.}
+\renewcommand{\cftsubsubsecaftersnum}{.}
+%\renewcommand{\cftsecpagefont}{\mbox{\hspace{4mm}}\normalfont}
 \usepackage{hyperref}
 
 \hypersetup{
@@ -78,7 +93,7 @@
 \usepackage{listings}
 \lstset{
     basicstyle=\footnotesize\ttfamily,
-    language=Matlab, % Или другой ваш язык -- см. документацию пакета
+    language=Python, % Или другой ваш язык -- см. документацию пакета
     commentstyle=\color{comment},
     numbers=left,
     numberstyle=\tiny\color{plain},

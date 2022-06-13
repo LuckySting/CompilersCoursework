@@ -5,34 +5,32 @@
 
 % Document
 \begin{document}
-    \include{0-todo-title}
-    \include{0-todo}
-    \setcounter{page}{1}
     \include{00-title}
 
-    \normalsize
-    \pagebreak
+    \include{01-todo}
 
-    \include{01-report}
-
-    \renewcommand{\contentsname}{\normalsize\bfseries\centering СОДЕРЖАНИЕ}
+    \setcounter{page}{3}
+    \renewcommand{\contentsname}{\normalsize\bfseries\centering Оглавление}
     \small
     \tableofcontents
     \normalsize
 
     \pagebreak
 
-    \include{20-analytic}
-    \input{30-constructing}
-    \input{40-compilation}
-    \input{80-conclusion.tex}
+    \include{02-brief}
+    \include{03-intro}
+    \include{10-analytic}
+    \include{20-constructing}
+    \include{30-technical}
+    \include{80-conclusion}
 
-    \section*{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}
-    \addcontentsline{toc}{section}{СПИСОК ИСПОЛЬЗОВАННЫХ ИСТОЧНИКОВ}
+    \phantomsection
+    \addcontentsline{toc}{section}{\textbf{Список литературы}}
     \bibliography{main}
     \pagebreak
 
-    \include{90-lexer-app}
-    \include{91-parser-app}
+    \include{90-parser-app}
+    \include{91-llvm_ir-app}
+    \include{92-visitor-app}
 
 \end{document}
