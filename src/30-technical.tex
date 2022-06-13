@@ -12,13 +12,13 @@
 
 \subsection{Запуск компилятора}\label{subsec:run}
 Для запуска компилятора необходимо выполнить команду
-\begin{lstlisting}[language=bash,caption={Установка зависимостей},label={lst:install}]
+\begin{lstlisting}[language=bash,caption={Установка зависимостей},label={lst:run}]
     python main.py main.go
 \end{lstlisting}
 
 В результате работы компилятора будет создан файл на языке LLVM IR output.ll, который необходимо скомпилировать для
 текущей платформы:
-\begin{lstlisting}[language=bash,caption={Установка зависимостей},label={lst:install}]
+\begin{lstlisting}[language=bash,caption={Установка зависимостей},label={lst:compile}]
     llc output.ll -fileType=obj -o output.o && gcc output.o
 \end{lstlisting}
 
@@ -39,8 +39,12 @@
 \end{figure}
 
 Результатом работы компилятора является код на языке промежуточного представляения LLVM IR, он представлен в
-листинге~\ref{lst:ir}.
-\begingroup
-\lstinputlisting[language=llvm,caption={Код промежуточного предствления LLVM IR},label={lst:ir}]{code/main.ll}
-\endgroup
+приложении В.
 
+При запуске программы, в стандартный поток вывода печатаются числа от 0 до 10, рисунок~\ref{fig:print}
+\begin{figure}[h!]
+    \centering
+    \fbox{\includegraphics[scale=0.7]{img/print_0_to_10}}
+    \caption{Вывод программы, печатающей символы от 0 до 10}
+    \label{fig:print}
+\end{figure}

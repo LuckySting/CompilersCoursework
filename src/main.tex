@@ -5,12 +5,11 @@
 
 % Document
 \begin{document}
-
-    \setcounter{page}{1}
     \include{00-title}
 
     \include{01-todo}
 
+    \setcounter{page}{3}
     \renewcommand{\contentsname}{\normalsize\bfseries\centering Оглавление}
     \small
     \tableofcontents
@@ -21,16 +20,17 @@
     \include{02-brief}
     \include{03-intro}
     \include{10-analytic}
-    \input{20-constructing.tex}
-    \input{30-technical.tex}
-    \input{80-conclusion.tex}
+    \include{20-constructing}
+    \include{30-technical}
+    \include{80-conclusion}
 
-    \section*{Список литературы}
+    \phantomsection
     \addcontentsline{toc}{section}{\textbf{Список литературы}}
     \bibliography{main}
     \pagebreak
 
-    \include{90-lexer-app}
-    \include{91-parser-app}
+    \include{90-parser-app}
+    \include{91-llvm_ir-app}
+    \include{92-visitor-app}
 
 \end{document}
